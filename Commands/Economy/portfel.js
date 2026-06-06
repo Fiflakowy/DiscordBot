@@ -1,6 +1,9 @@
 const { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const db = require('../../db.js');
-const { createCanvas, loadImage } = require('@napi-rs/canvas');
+const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
+
+// --- REJESTRACJA CZCIONKI DLA LINUXA ---
+GlobalFonts.registerFromPath('./JetBrainsMono-ExtraBold.ttf', 'JetBrainsMono');
 
 // ─────────────────────────────────────────────
 // 📊 1. SYSTEM POZIOMÓW (RPG LOGIC)
@@ -117,17 +120,17 @@ class ProfileCanvas {
 
         // --- TEKST ---
         // Nazwa użytkownika
-        ctx.font = 'bold 42px sans-serif';
+        ctx.font = 'bold 42px "JetBrainsMono"';
         ctx.fillStyle = '#ffffff';
         ctx.fillText(user.username.toUpperCase(), 220, 60);
 
         // Ranga na serwerze
-        ctx.font = '22px sans-serif';
+        ctx.font = '22px "JetBrainsMono"';
         ctx.fillStyle = '#F1C40F';
         ctx.fillText(`Miejsce w rankingu: #${profileData.serverRank}`, 220, 105);
 
         // Monety
-        ctx.font = 'bold 30px sans-serif';
+        ctx.font = 'bold 30px "JetBrainsMono"';
         ctx.fillStyle = '#e4c464';
         ctx.fillText(`💰 ${profileData.coins.toLocaleString('pl-PL')} Złotych Monet`, 220, 150);
 
@@ -160,7 +163,7 @@ class ProfileCanvas {
         }
 
         // Tekst na pasku XP
-        ctx.font = 'bold 16px monospace';
+        ctx.font = 'bold 16px "JetBrainsMono"';
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'center';
         ctx.fillText(`POZIOM ${levelData.level}  [ ${levelData.currentXP} / ${levelData.xpForNextLevel} XP ]`, barX + barW / 2, barY + 17);

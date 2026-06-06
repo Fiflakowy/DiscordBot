@@ -1,0 +1,60 @@
+# ==========================================
+# 1. SEKRETY I KONFIGURACJA (NAJWAŻNIEJSZE!)
+# ==========================================
+.env
+.env.local
+.env.production
+config.json
+
+# ==========================================
+# 2. DEPENDENCJE (Zależności pobierane przez npm)
+# ==========================================
+node_modules/
+/jspm_packages/
+/.pnp
+.pnp.js
+
+# ==========================================
+# 3. LOKALNA BAZA DANYCH (Bardzo ważne!)
+# Nie chcemy wysyłać lokalnej bazy na GitHuba,
+# bo Railway ma swój własny wolumen (/data).
+# ==========================================
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+/data/
+
+# ==========================================
+# 4. LOGI I DIAGNOSTYKA
+# ==========================================
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ==========================================
+# 5. PLIKI SYSTEMOWE (Śmieci z Windowsa/Maca)
+# ==========================================
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ==========================================
+# 6. FOLDERY IDE / EDYTORÓW (np. VS Code)
+# ==========================================
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

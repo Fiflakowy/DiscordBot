@@ -28,8 +28,8 @@ const WHEEL_ORDER = [
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function getColorInfo(n) {
-    if (n === 0)             return { color: 'green', hex: '#1a7a3c', light: '#2ecc71', label: 'ZIELONY'  };
-    if (RED_NUMBERS.has(n))  return { color: 'red',   hex: '#9b1c1c', light: '#e74c3c', label: 'CZERWONY' };
+    if (n === 0)               return { color: 'green', hex: '#1a7a3c', light: '#2ecc71', label: 'ZIELONY'  };
+    if (RED_NUMBERS.has(n))    return { color: 'red',   hex: '#9b1c1c', light: '#e74c3c', label: 'CZERWONY' };
     return                          { color: 'black', hex: '#111827', light: '#6b7280', label: 'CZARNY'   };
 }
 
@@ -52,7 +52,7 @@ function drawRouletteCanvas(winNumber) {
 
     function goldGrad() {
         const g = ctx.createLinearGradient(0, 0, W, H);
-        g.addColorStop(0,    '#9a7b1e');
+        g.addColorStop(0,   '#9a7b1e');
         g.addColorStop(0.25, '#f5d060');
         g.addColorStop(0.5,  '#fffde7');
         g.addColorStop(0.75, '#f5d060');
@@ -119,16 +119,18 @@ function drawRouletteCanvas(winNumber) {
     for (let s = 0; s < segCnt; s++) {
         const n        = WHEEL_ORDER[s];
         const midAngle = rot + s * sa + sa / 2;
-        const nr       = WR * 0.72;
+        // Poprawka: WR * 0.85 aby tekst był lepiej widoczny na segmentach
+        const nr       = WR * 0.85; 
         const tx       = cx + Math.cos(midAngle) * nr;
         const ty       = cy + Math.sin(midAngle) * nr;
         ctx.save();
         ctx.translate(tx, ty);
         ctx.rotate(midAngle + Math.PI / 2);
-        ctx.font         = n === winNumber ? 'bold 11px sans-serif' : '9px sans-serif';
-        ctx.fillStyle    = n === winNumber ? '#ffffff' : 'rgba(255,255,255,0.82)';
-        ctx.shadowColor  = n === winNumber ? 'rgba(255,255,80,0.95)' : 'transparent';
-        ctx.shadowBlur   = n === winNumber ? 7 : 0;
+        // Poprawka: czcionka i cień dla czytelności
+        ctx.font         = n === winNumber ? 'bold 16px sans-serif' : '14px sans-serif';
+        ctx.fillStyle    = '#ffffff';
+        ctx.shadowColor  = 'rgba(0,0,0,1)';
+        ctx.shadowBlur   = 4;
         ctx.fillText(n.toString(), 0, 0);
         ctx.restore();
     }

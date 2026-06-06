@@ -2,82 +2,80 @@ const { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder, MessageFlags } = r
 const db = require('../../db.js');
 const { createCanvas } = require('@napi-rs/canvas');
 
-// 1. DEFINICJA KLASY CANVAS - Musi być przed użyciem
+// ==========================================
+// 🎨 ZAAWANSOWANY ENGINE CANVAS (PRZYWRÓCONY)
+// ==========================================
 class WorkCanvas {
     static async generatePaySlip(username, baseCoins, totalCoins, roleMult, jobText) {
         const W = 750, H = 250;
         const canvas = createCanvas(W, H);
         const ctx = canvas.getContext('2d');
+
+        // Tło
         const bgGrad = ctx.createLinearGradient(0, 0, W, H);
         bgGrad.addColorStop(0, '#101018'); 
         bgGrad.addColorStop(1, '#1a1a24');
         ctx.fillStyle = bgGrad;
         ctx.fillRect(0, 0, W, H);
-        
-        ctx.strokeStyle = '#D4AF37';
-        ctx.lineWidth = 2;
+
+        // Obramowanie
+        ctx.strokeStyle = '#D4AF37'; ctx.lineWidth = 2;
         ctx.strokeRect(15, 15, W - 30, H - 30);
         
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = '24px sans-serif';
-        ctx.fillText(`Wypłata dla: ${username}`, 35, 100);
-        ctx.fillText(`Zarobek: ${totalCoins} monet`, 35, 150);
+        // Nagłówek
+        ctx.fillStyle = '#D4AF37'; ctx.fillRect(20, 20, W - 40, 45);
+        ctx.fillStyle = '#101018'; ctx.font = 'bold 24px serif';
+        ctx.fillText('OFICJALNY KWIT WYPŁATY', 35, 52);
 
+        // Dane
+        ctx.fillStyle = '#A8A8B8'; ctx.font = 'bold 18px monospace';
+        ctx.fillText(`ZLECENIOBIORCA: ${username.toUpperCase()}`, 35, 105);
+        ctx.fillText(`ZADANIE: ${jobText.length > 50 ? jobText.substring(0, 47) + '...' : jobText}`, 35, 135);
+        
+        // Wypłata
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#F1C40F'; ctx.font = 'bold 60px sans-serif';
+        ctx.fillText(`+${totalCoins}`, 710, 180);
+        
         const buffer = await canvas.encode('png');
         return new AttachmentBuilder(buffer, { name: 'payslip.png' });
     }
 }
 
-// 2. FUNKCJA NAPRAWCZA BAZY
+// Funkcja naprawcza bazy
 function ensureDatabaseSchema() {
     try {
         const columns = db.prepare("PRAGMA table_info(economy)").all();
-        const columnNames = columns.map(c => c.name);
-        if (!columnNames.includes('xp')) {
+        if (!columns.find(c => c.name === 'xp')) {
             db.prepare("ALTER TABLE economy ADD COLUMN xp INTEGER DEFAULT 0").run();
         }
-    } catch (e) { console.error("Błąd migracji bazy:", e); }
+    } catch (e) { console.error("Błąd bazy:", e); }
 }
 ensureDatabaseSchema();
-
-// 3. KONFIGURACJA I EKSPORT
-const WORK_CONFIG = { BASE_PAY_MIN: 20, BASE_PAY_MAX: 80, XP_REWARD: 10 };
-const workCooldowns = new Map();
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('praca')
-        .setDescription('Podejmij się dorywczej pracy.'),
+        .setDescription('Podejmij się dorywczej pracy w Zakonie.'),
 
     async execute(interaction) {
+        await interaction.deferReply();
         const userId = interaction.user.id;
         const guildId = interaction.guild.id;
 
-        const now = Date.now();
-        if (workCooldowns.has(`${guildId}-${userId}`) && now < workCooldowns.get(`${guildId}-${userId}`)) {
-            return interaction.reply({ 
-                content: `⏳ Musisz odpocząć.`, 
-                flags: [MessageFlags.Ephemeral] 
-            });
-        }
-
-        await interaction.deferReply();
-
-        // Zapis w bazie
-        db.prepare('INSERT OR IGNORE INTO economy (userId, guildId, coins, xp) VALUES (?, ?, 0, 0)').run(userId, guildId);
-        
+        // Logika wypłaty
         const totalPay = Math.floor(Math.random() * 60) + 20;
-        db.prepare('UPDATE economy SET coins = coins + ?, xp = xp + ? WHERE userId = ? AND guildId = ?')
-          .run(totalPay, WORK_CONFIG.XP_REWARD, userId, guildId);
+        
+        // Aktualizacja (z uwzględnieniem xp)
+        db.prepare('INSERT OR IGNORE INTO economy (userId, guildId, coins, xp) VALUES (?, ?, 0, 0)').run(userId, guildId);
+        db.prepare('UPDATE economy SET coins = coins + ?, xp = xp + 10 WHERE userId = ? AND guildId = ?')
+          .run(totalPay, userId, guildId);
 
-        workCooldowns.set(`${guildId}-${userId}`, now + 30000);
-
-        // Użycie WorkCanvas
-        const paySlipImage = await WorkCanvas.generatePaySlip(interaction.user.username, 20, totalPay, 1, "Praca wykonana");
+        // Renderowanie pięknego canvasa
+        const image = await WorkCanvas.generatePaySlip(interaction.user.username, 20, totalPay, 1.0, "Rąbanie drewna w lesie");
 
         await interaction.editReply({
-            content: `Zarobiłeś ${totalPay} monet!`,
-            files: [paySlipImage]
+            files: [image]
         });
     }
 };

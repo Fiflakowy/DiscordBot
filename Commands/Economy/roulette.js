@@ -42,10 +42,6 @@ function buildBetList(bets) {
 
 // ─── Canvas Renderer ─────────────────────────────────────────────────────────
 
-/**
- * Draws a premium roulette result card with a full segmented wheel.
- * Returns a Buffer (PNG).
- */
 function drawRouletteCanvas(winNumber) {
     const W = 900, H = 420;
     const canvas = createCanvas(W, H);
@@ -54,7 +50,6 @@ function drawRouletteCanvas(winNumber) {
 
     const wc = getColorInfo(winNumber);
 
-    // ── Gold gradient factory (re-created each time it's needed) ────────────
     function goldGrad() {
         const g = ctx.createLinearGradient(0, 0, W, H);
         g.addColorStop(0,    '#9a7b1e');
@@ -65,7 +60,6 @@ function drawRouletteCanvas(winNumber) {
         return g;
     }
 
-    // ── Background felt ──────────────────────────────────────────────────────
     const bg = ctx.createRadialGradient(cx, cy, 60, cx, cy, 500);
     bg.addColorStop(0,   '#1b5e35');
     bg.addColorStop(0.6, '#0d3d1e');
@@ -73,7 +67,6 @@ function drawRouletteCanvas(winNumber) {
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, W, H);
 
-    // ── Gold border ──────────────────────────────────────────────────────────
     ctx.save();
     ctx.lineWidth   = 12;
     ctx.strokeStyle = goldGrad();
@@ -85,15 +78,12 @@ function drawRouletteCanvas(winNumber) {
     ctx.stroke();
     ctx.restore();
 
-    // ── Wheel setup ──────────────────────────────────────────────────────────
-    const WR     = 165;  // outer radius of segments
-    const segCnt = WHEEL_ORDER.length; // 37
+    const WR     = 165; 
+    const segCnt = WHEEL_ORDER.length;
     const sa     = (Math.PI * 2) / segCnt;
     const winIdx = WHEEL_ORDER.indexOf(winNumber);
-    // rotate so winner lands at pointer (bottom = π/2)
     const rot = Math.PI / 2 - winIdx * sa - sa / 2;
 
-    // outer gold bezel
     ctx.save();
     const bezel = ctx.createRadialGradient(cx, cy, WR - 4, cx, cy, WR + 20);
     bezel.addColorStop(0,   '#8a6d14');
@@ -106,7 +96,6 @@ function drawRouletteCanvas(winNumber) {
     ctx.fill();
     ctx.restore();
 
-    // segments
     for (let s = 0; s < segCnt; s++) {
         const n     = WHEEL_ORDER[s];
         const c     = getColorInfo(n);
@@ -124,7 +113,6 @@ function drawRouletteCanvas(winNumber) {
         ctx.stroke();
     }
 
-    // segment number labels
     ctx.save();
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
@@ -146,7 +134,6 @@ function drawRouletteCanvas(winNumber) {
     }
     ctx.restore();
 
-    // gold diamonds on rim (decorative separators every 45°)
     ctx.save();
     for (let d = 0; d < 8; d++) {
         const a  = rot + (d / 8) * Math.PI * 2;
@@ -167,14 +154,12 @@ function drawRouletteCanvas(winNumber) {
     }
     ctx.restore();
 
-    // inner gold rim stroke
     ctx.beginPath();
     ctx.arc(cx, cy, WR, 0, Math.PI * 2);
     ctx.strokeStyle = 'rgba(245,208,80,0.5)';
     ctx.lineWidth   = 2;
     ctx.stroke();
 
-    // hub background
     ctx.save();
     const hub = ctx.createRadialGradient(cx, cy, 0, cx, cy, 58);
     hub.addColorStop(0,   '#2d2d2d');
@@ -189,7 +174,6 @@ function drawRouletteCanvas(winNumber) {
     ctx.stroke();
     ctx.restore();
 
-    // hub: winning number
     ctx.save();
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
@@ -204,7 +188,6 @@ function drawRouletteCanvas(winNumber) {
     ctx.fillText(wc.label, cx, cy + 24);
     ctx.restore();
 
-    // ── Pointer triangle at bottom (pointing to winner) ──────────────────────
     const pAngle = Math.PI / 2;
     const pTipX  = cx + Math.cos(pAngle) * (WR + 2);
     const pTipY  = cy + Math.sin(pAngle) * (WR + 2);
@@ -220,7 +203,6 @@ function drawRouletteCanvas(winNumber) {
     ctx.fill();
     ctx.restore();
 
-    // ── Ball on the winning segment rim ──────────────────────────────────────
     const ballAngle = rot + winIdx * sa + sa / 2;
     const bx = cx + Math.cos(ballAngle) * (WR + 10);
     const by = cy + Math.sin(ballAngle) * (WR + 10);
@@ -237,7 +219,6 @@ function drawRouletteCanvas(winNumber) {
     ctx.fill();
     ctx.restore();
 
-    // ── Left panel: RULETKA / ZAKONU ─────────────────────────────────────────
     ctx.save();
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
@@ -251,7 +232,6 @@ function drawRouletteCanvas(winNumber) {
     ctx.fillText('ZAKONU',  112, cy + 24);
     ctx.restore();
 
-    // ── Right panel: WYPADŁO + colored badge ─────────────────────────────────
     const rx = W - 138, rw = 156, rh = 72;
     ctx.save();
     ctx.textAlign    = 'center';
@@ -262,7 +242,6 @@ function drawRouletteCanvas(winNumber) {
     ctx.shadowBlur   = 8;
     ctx.fillText('WYPADŁO', rx, cy - 58);
 
-    // badge
     ctx.shadowColor = wc.light;
     ctx.shadowBlur  = 22;
     roundRect(ctx, rx - rw / 2, cy - 28, rw, rh, 14);
@@ -285,8 +264,6 @@ function drawRouletteCanvas(winNumber) {
     return canvas.toBuffer('image/png');
 }
 
-// ─── Utility: lighten hex color for winner segment highlight ─────────────────
-
 function lightenHex(hex, amount) {
     const num = parseInt(hex.replace('#', ''), 16);
     const r   = Math.min(255, (num >> 16) + amount);
@@ -294,8 +271,6 @@ function lightenHex(hex, amount) {
     const b   = Math.min(255, (num & 0xff) + amount);
     return `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)}`;
 }
-
-// ─── Utility: draw rounded rectangle path ────────────────────────────────────
 
 function roundRect(ctx, x, y, w, h, r) {
     ctx.beginPath();
@@ -333,9 +308,7 @@ module.exports = {
         await interaction.deferReply();
 
         /** @type {Map<string, {userId,tag,type,value,amount,displayValue}>} */
-        const bets = new Map(); // userId → bet (1 bet per user, replaced on re-bet)
-
-        // ── Build embed & buttons ────────────────────────────────────────────
+        const bets = new Map(); 
 
         const tableEmbed = () =>
             new EmbedBuilder()
@@ -370,8 +343,6 @@ module.exports = {
             embeds: [tableEmbed()],
             components: [rowColors, rowDozens, rowNumber],
         });
-
-        // ── Collector ────────────────────────────────────────────────────────
 
         const collector = tableMessage.createMessageComponentCollector({ time: 30_000 });
 
@@ -413,18 +384,27 @@ module.exports = {
                     time: 25_000,
                 });
             } catch {
-                return; // user didn't submit in time — silently ignore
+                return; // timeout
             }
 
             await submitted.deferReply({ ephemeral: true });
 
-            // ── Parse amount ──────────────────────────────────────────────────
-            const amount = parseInt(submitted.fields.getTextInputValue('amount'), 10);
-            if (!Number.isInteger(amount) || amount <= 0) {
-                return submitted.editReply('❌ Karczmarz kręci głową. Podaj poprawną, dodatnią liczbę monet!');
+            // ZABEZPIECZENIE: Sprawdzenie, czy stół nie został już zamknięty (zapobiega utracie monet po upływie czasu)
+            if (!activeTables.has(channelId)) {
+                return submitted.editReply('❌ Czas na zakłady minął! Koło już się kręci.');
             }
 
-            // ── DB: ensure row, check balance ─────────────────────────────────
+            // ZABEZPIECZENIE: Wykorzystanie Regexa, aby w input nie wpadło np. "100abc"
+            const rawAmount = submitted.fields.getTextInputValue('amount');
+            if (!/^\d+$/.test(rawAmount)) {
+                return submitted.editReply('❌ Karczmarz kręci głową. Podaj poprawną, całkowitą liczbę monet!');
+            }
+            const amount = parseInt(rawAmount, 10);
+            
+            if (amount <= 0) {
+                return submitted.editReply('❌ Kwota zakładu musi być większa niż zero!');
+            }
+
             db.prepare(
                 'INSERT OR IGNORE INTO economy (userId, guildId, coins) VALUES (?, ?, 0)'
             ).run(userId, guildId);
@@ -433,7 +413,6 @@ module.exports = {
                 'SELECT coins FROM economy WHERE userId = ? AND guildId = ?'
             ).get(userId, guildId);
 
-            // If user is re-betting, temporarily refund their previous bet for balance check
             const prevBet = bets.get(userId);
             const effectiveCoins = userEco.coins + (prevBet ? prevBet.amount : 0);
 
@@ -443,7 +422,6 @@ module.exports = {
                 );
             }
 
-            // ── Build bet object ──────────────────────────────────────────────
             let betType, betValue, displayValue;
 
             switch (i.customId) {
@@ -454,8 +432,12 @@ module.exports = {
                 case 'bet_doz2':   betType = 'dozen';  betValue = 2;       displayValue = '🎲 13-24';       break;
                 case 'bet_doz3':   betType = 'dozen';  betValue = 3;       displayValue = '🎲 25-36';       break;
                 case 'bet_number': {
-                    const num = parseInt(submitted.fields.getTextInputValue('number'), 10);
-                    if (!Number.isInteger(num) || num < 1 || num > 36) {
+                    const rawNum = submitted.fields.getTextInputValue('number');
+                    if (!/^\d+$/.test(rawNum)) {
+                        return submitted.editReply('❌ Podaj poprawną cyfrę! (tylko liczby)');
+                    }
+                    const num = parseInt(rawNum, 10);
+                    if (num < 1 || num > 36) {
                         return submitted.editReply('❌ Konkretna cyfra musi być z zakresu **1–36**!');
                     }
                     betType = 'number'; betValue = num; displayValue = `🔢 Cyfra: ${num}`;
@@ -465,7 +447,6 @@ module.exports = {
                     return submitted.editReply('❌ Nieznany rodzaj zakładu.');
             }
 
-            // ── Refund previous bet (if re-betting) then deduct new ───────────
             if (prevBet) {
                 db.prepare(
                     'UPDATE economy SET coins = coins + ? WHERE userId = ? AND guildId = ?'
@@ -475,11 +456,10 @@ module.exports = {
                 'UPDATE economy SET coins = coins - ? WHERE userId = ? AND guildId = ?'
             ).run(amount, userId, guildId);
 
-            // ── Store bet ─────────────────────────────────────────────────────
             bets.set(userId, { userId, tag: i.user.username, type: betType, value: betValue, amount, displayValue });
 
-            // ── Update table embed ────────────────────────────────────────────
-            await interaction.editReply({ embeds: [tableEmbed()] });
+            // ZABEZPIECZENIE: .catch() na wypadek API Discord Rate Limit przy masowych zakładach
+            await interaction.editReply({ embeds: [tableEmbed()] }).catch(() => {});
 
             const rebet = prevBet ? ` *(poprzedni zakład zastąpiony)*` : '';
             await submitted.editReply(
@@ -495,7 +475,6 @@ module.exports = {
             const winNumber = Math.floor(Math.random() * 37); // 0–36
             const { hex: winHex, color: winColor, label: colorLabel } = getColorInfo(winNumber);
 
-            // Disable buttons
             try {
                 const disabledComponents = tableMessage.components.map((row) =>
                     new ActionRowBuilder().addComponents(
@@ -504,14 +483,12 @@ module.exports = {
                         )
                     )
                 );
-                await interaction.editReply({ components: disabledComponents });
+                await interaction.editReply({ components: disabledComponents }).catch(() => {});
             } catch { /* message may be gone */ }
 
-            // Draw canvas
             const imgBuffer  = drawRouletteCanvas(winNumber);
             const attachment = new AttachmentBuilder(imgBuffer, { name: 'roulette_result.png' });
 
-            // Resolve bets
             let resultLines = [];
             let totalPaidOut = 0;
 
@@ -559,7 +536,7 @@ module.exports = {
                 resultEmbed.addFields({ name: '💸 Łączna wypłata:', value: `**${totalPaidOut} 🪙**` });
             }
 
-            await interaction.followUp({ embeds: [resultEmbed], files: [attachment] });
+            await interaction.followUp({ embeds: [resultEmbed], files: [attachment] }).catch(console.error);
         });
     },
 };

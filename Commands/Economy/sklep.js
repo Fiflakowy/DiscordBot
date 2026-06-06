@@ -9,13 +9,16 @@ const {
     AttachmentBuilder
 } = require('discord.js');
 const db = require('../../db.js');
-const { createCanvas } = require('@napi-rs/canvas');
+const { createCanvas, GlobalFonts } = require('@napi-rs/canvas');
+
+// --- REJESTRACJA CZCIONKI DLA LINUXA ---
+GlobalFonts.registerFromPath('./JetBrainsMono-ExtraBold.ttf', 'JetBrainsMono');
 
 // ─────────────────────────────────────────────
 // 📦 SHOP DATA (BAZA PRZEDMIOTÓW)
 // ─────────────────────────────────────────────
 const ELIXIRS = [
-    { id: 'e1', label: 'Słaby Wywar',          mult: 1.5, emoji: '🧪', rarity: 'Pospolity',   color: '#78c46e', desc: 'Delikatna mikstura dla nowicjuszy.' },
+    { id: 'e1', label: 'Słaby Wywar',        mult: 1.5, emoji: '🧪', rarity: 'Pospolity',   color: '#78c46e', desc: 'Delikatna mikstura dla nowicjuszy.' },
     { id: 'e2', label: 'Mikstura Odwagi',       mult: 2.0, emoji: '🍺', rarity: 'Pospolity',   color: '#78c46e', desc: 'Dodaje sił na wieczorną sesję.' },
     { id: 'e3', label: 'Eliksir Mędrca',        mult: 2.5, emoji: '📚', rarity: 'Rzadki',      color: '#5ba3f5', desc: 'Wiedza zakodowana w każdej kropli.' },
     { id: 'e4', label: 'Miód Królewski',        mult: 3.0, emoji: '🍯', rarity: 'Rzadki',      color: '#5ba3f5', desc: 'Zbierany przez pszczoły Karczmarza.' },
@@ -113,7 +116,7 @@ async function generateShopBanner(username, coins, boostMult, boostActive) {
     ctx.fillRect(0, 0, W, H);
 
     // TITLE
-    ctx.font = 'bold 36px sans-serif';
+    ctx.font = 'bold 36px "JetBrainsMono"';
     ctx.fillStyle = '#e4c464';
     ctx.shadowColor = 'rgba(228,196,100,0.7)';
     ctx.shadowBlur = 18;
@@ -121,7 +124,7 @@ async function generateShopBanner(username, coins, boostMult, boostActive) {
     ctx.shadowBlur = 0;
 
     // Subtitle
-    ctx.font = '16px sans-serif';
+    ctx.font = '16px "JetBrainsMono"';
     ctx.fillStyle = 'rgba(228,196,100,0.55)';
     ctx.fillText('Królewska Alchemia & Czarny Rynek', 32, 82);
 
@@ -131,7 +134,7 @@ async function generateShopBanner(username, coins, boostMult, boostActive) {
     ctx.beginPath(); ctx.moveTo(28, 96); ctx.lineTo(420, 96); ctx.stroke();
 
     // User info
-    ctx.font = '15px sans-serif';
+    ctx.font = '15px "JetBrainsMono"';
     ctx.fillStyle = '#c9a84c';
     ctx.fillText(`👤 ${username}`, 32, 120);
     ctx.fillText(`💰 ${coins.toLocaleString('pl-PL')} monet`, 32, 143);

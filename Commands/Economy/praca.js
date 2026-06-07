@@ -1,8 +1,17 @@
 const { SlashCommandBuilder, AttachmentBuilder } = require('discord.js');
 const db = require('../../db.js');
-const { createCanvas, loadImage } = require('@napi-rs/canvas');
+const { createCanvas, loadImage, registerFont } = require('@napi-rs/canvas');
 const path = require('path');
 const fs = require('fs');
+
+// Rejestracja czcionki (wykonuje się raz)
+const fontPath = path.join(process.cwd(), 'JetBrainsMono-ExtraBold.ttf');
+if (fs.existsSync(fontPath)) {
+    registerFont(fontPath, { family: 'JetBrainsMono' });
+    console.log('✅ JetBrainsMono-ExtraBold załadowana');
+} else {
+    console.warn('⚠️ Nie znaleziono JetBrainsMono-ExtraBold.ttf – będzie użyta Georgia');
+}
 
 class WorkCanvas {
     static async generatePaySlip(username, totalCoins, jobText) {
@@ -11,11 +20,9 @@ class WorkCanvas {
         const canvas = createCanvas(W, H);
         const ctx = canvas.getContext('2d');
 
-        // Wczytanie tła
+        // Tło
         const bgPath = path.join(process.cwd(), 'praca.png');
-        if (!fs.existsSync(bgPath)) {
-            throw new Error('Brak pliku praca.png w folderze głównym!');
-        }
+        if (!fs.existsSync(bgPath)) throw new Error('Brak pliku praca.png');
 
         const bg = await loadImage(fs.readFileSync(bgPath));
         ctx.drawImage(bg, 0, 0, W, H);
@@ -24,58 +31,53 @@ class WorkCanvas {
         ctx.fillStyle = inkColor;
         ctx.textBaseline = 'middle';
 
+        const fontFamily = fs.existsSync(fontPath) ? 'JetBrainsMono' : 'Georgia, serif';
+
         // ====================== NAGŁÓWEK ======================
         ctx.textAlign = 'center';
-        ctx.font = 'bold 48px Georgia, serif';
-        ctx.fillText('OFICJALNY KWIT WYPŁATY', W / 2, 170);
+        ctx.font = `bold 26px ${fontFamily}`;
+        ctx.fillText('OFICJALNY KWIT WYPŁATY', W / 2, 175);
 
-        // ====================== DANE (etykiety + wartości) ======================
+        // ====================== DANE ======================
         ctx.textAlign = 'left';
-        ctx.font = 'bold 29px Georgia, serif';
+        ctx.font = `bold 19px ${fontFamily}`;
 
-        const labelX = 270;
-        const valueX = 425;        // zgodnie z Twoją sugestią
-        let y = 235;
+        const leftX = 280;
+        let y = 240;
 
-        // Pracownik
-        ctx.fillText('Pracownik:', labelX, y);
-        ctx.fillText(username, valueX, y);
-        y += 48;
+        ctx.fillText(`Pracownik: ${username}`, leftX, y);
+        y += 45;
 
-        // Zadanie
-        const truncatedJob = jobText.length > 46 
-            ? jobText.substring(0, 43) + '...' 
+        const truncatedJob = jobText.length > 48 
+            ? jobText.substring(0, 45) + '...' 
             : jobText;
         
-        ctx.fillText('Zadanie:', labelX, y);
-        ctx.fillText(truncatedJob, valueX, y);
-        y += 48;
+        ctx.fillText(`Zadanie: ${truncatedJob}`, leftX, y);
+        y += 45;
 
-        // Data
         const date = new Date().toLocaleDateString('pl-PL', {
             day: '2-digit', month: '2-digit', year: 'numeric'
         });
-        ctx.fillText('Data:', labelX, y);
-        ctx.fillText(date, valueX, y);
+        ctx.fillText(`Data: ${date}`, leftX, y);
 
         // ====================== KWOTA ======================
         ctx.textAlign = 'center';
-        ctx.font = 'bold 58px Georgia, serif';
+        ctx.font = `bold 28px ${fontFamily}`;   // większa niż w instrukcji, ale nadal bezpieczna
         
         const amount = `ZAROBEK: ${totalCoins} ZŁ`;
 
         // Cień
         ctx.fillStyle = '#1C1408';
-        ctx.fillText(amount, W/2 + 4, 415);
+        ctx.fillText(amount, W/2 + 2, 412);
 
         // Główny tekst
         ctx.fillStyle = inkColor;
-        ctx.fillText(amount, W/2, 411);
+        ctx.fillText(amount, W/2, 409);
 
-        // Obrys dla lepszej widoczności
+        // Obrys
         ctx.strokeStyle = '#1C1408';
-        ctx.lineWidth = 3.5;
-        ctx.strokeText(amount, W/2, 411);
+        ctx.lineWidth = 2.5;
+        ctx.strokeText(amount, W/2, 409);
 
         return new AttachmentBuilder(await canvas.encode('png'), { 
             name: 'kwit_wyplaty.png' 
@@ -89,11 +91,8 @@ function checkDatabase() {
         const columns = db.prepare("PRAGMA table_info(economy)").all();
         if (!columns.find(c => c.name === 'xp')) {
             db.prepare("ALTER TABLE economy ADD COLUMN xp INTEGER DEFAULT 0").run();
-            console.log('[DB] Dodano kolumnę xp');
         }
-    } catch (e) {
-        console.error('[DB] Błąd:', e);
-    }
+    } catch (e) { console.error(e); }
 }
 checkDatabase();
 

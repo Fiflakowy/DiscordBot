@@ -6,51 +6,84 @@ const fs = require('fs');
 
 class WorkCanvas {
     static async generatePaySlip(username, totalCoins, jobText) {
-        const W = 1024, H = 576; // Wymiary tła
+        const W = 1024;
+        const H = 576;
         const canvas = createCanvas(W, H);
         const ctx = canvas.getContext('2d');
 
-        // Wczytywanie tła z głównego folderu
+        // Wczytanie tła (pergamin)
         const bgPath = path.join(process.cwd(), 'praca.png');
+        if (!fs.existsSync(bgPath)) {
+            throw new Error('Brak pliku praca.png w folderze głównym!');
+        }
+        
         const bg = await loadImage(fs.readFileSync(bgPath));
         ctx.drawImage(bg, 0, 0, W, H);
 
-        // Ustawienia stylu (Kolor "atramentu")
-        const inkColor = '#2B1E10'; 
+        // Kolor atramentu
+        const inkColor = '#2B1E10';
         ctx.fillStyle = inkColor;
         ctx.textBaseline = 'middle';
 
-        // 1. Nagłówek (Wyśrodkowany na pergaminie)
+        // ====================== NAGŁÓWEK ======================
         ctx.textAlign = 'center';
         ctx.font = 'bold 42px Georgia, serif';
         ctx.fillText('OFICJALNY KWIT WYPŁATY', W / 2, 160);
 
-        // 2. Dane pracownika (Wyrównane do lewej, margines 270px)
+        // ====================== DANE PRACOWNIKA ======================
         ctx.textAlign = 'left';
         ctx.font = '28px Georgia, serif';
-        
-        ctx.fillText(`Pracownik: ${username}`, 270, 220);
-        ctx.fillText(`Zadanie: ${jobText.length > 30 ? jobText.substring(0, 27) + '...' : jobText}`, 270, 265);
-        
-        const date = new Date().toLocaleDateString('pl-PL');
-        ctx.fillText(`Data: ${date}`, 270, 310);
 
-        // 3. Kwota (Wyróżniona na dole)
-        ctx.font = 'bold 45px Georgia, serif';
-        ctx.fillText(`ZAROBEK: ${totalCoins} ZŁ`, 350, 390);
+        const startX = 270;
+        let startY = 225;
 
-        return new AttachmentBuilder(await canvas.encode('png'), { name: 'payslip.png' });
+        ctx.fillText(`Pracownik: ${username}`, startX, startY);
+        startY += 45;
+
+        // Zadanie (z obcinaniem)
+        const truncatedJob = jobText.length > 38 
+            ? jobText.substring(0, 35) + '...' 
+            : jobText;
+        ctx.fillText(`Zadanie: ${truncatedJob}`, startX, startY);
+        startY += 45;
+
+        const date = new Date().toLocaleDateString('pl-PL', { 
+            day: '2-digit', 
+            month: '2-digit', 
+            year: 'numeric' 
+        });
+        ctx.fillText(`Data: ${date}`, startX, startY);
+
+        // ====================== KWOTA (WYRÓŻNIONA) ======================
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 48px Georgia, serif';
+        
+        const amountText = `ZAROBEK: ${totalCoins} ZŁ`;
+        ctx.fillText(amountText, 520, 395);   // X=520, Y=395 jak w wytycznych
+
+        // Opcjonalny delikatny cień pod kwotą (dla lepszego efektu)
+        ctx.fillStyle = '#1C120C';
+        ctx.fillText(amountText, 522, 397);
+
+        // Przywrócenie koloru głównego
+        ctx.fillStyle = inkColor;
+
+        return new AttachmentBuilder(await canvas.encode('png'), { 
+            name: 'kwit_wyplaty.png' 
+        });
     }
 }
 
-// Funkcja naprawy bazy
+// Naprawa bazy (dodanie xp jeśli nie istnieje)
 function checkDatabase() {
     try {
         const columns = db.prepare("PRAGMA table_info(economy)").all();
         if (!columns.find(c => c.name === 'xp')) {
             db.prepare("ALTER TABLE economy ADD COLUMN xp INTEGER DEFAULT 0").run();
         }
-    } catch (e) { console.error(e); }
+    } catch (e) {
+        console.error('[DB] Błąd przy sprawdzaniu kolumny xp:', e);
+    }
 }
 checkDatabase();
 
@@ -61,20 +94,34 @@ module.exports = {
 
     async execute(interaction) {
         await interaction.deferReply();
-        const userId = interaction.user.id;
-        const totalPay = Math.floor(Math.random() * 60) + 20;
-        const job = "Rąbanie drewna w lesie"; 
 
-        db.prepare('INSERT OR IGNORE INTO economy (userId, guildId, coins, xp) VALUES (?, ?, 0, 0)').run(userId, interaction.guild.id);
+        const userId = interaction.user.id;
+        const guildId = interaction.guild.id;
+
+        const totalPay = Math.floor(Math.random() * 60) + 20;
+        const job = "Rąbanie drewna w lesie";
+
+        // Zapewnienie rekordu w bazie
+        db.prepare('INSERT OR IGNORE INTO economy (userId, guildId, coins, xp) VALUES (?, ?, 0, 0)')
+          .run(userId, guildId);
+
         db.prepare('UPDATE economy SET coins = coins + ?, xp = xp + 10 WHERE userId = ? AND guildId = ?')
-          .run(totalPay, userId, interaction.guild.id);
+          .run(totalPay, userId, guildId);
 
         try {
-            const image = await WorkCanvas.generatePaySlip(interaction.user.username, totalPay, job);
-            await interaction.editReply({ files: [image] });
+            const image = await WorkCanvas.generatePaySlip(
+                interaction.user.username, 
+                totalPay, 
+                job
+            );
+
+            await interaction.editReply({ 
+                content: `**Kwit wypłaty gotowy, ${interaction.user}!**`, 
+                files: [image] 
+            });
         } catch (e) {
-            console.error(e);
-            await interaction.editReply("Wystąpił błąd podczas generowania kwitu.");
+            console.error('Błąd generowania kwitu:', e);
+            await interaction.editReply("❌ Wystąpił błąd podczas generowania kwitu wypłaty.");
         }
     }
 };

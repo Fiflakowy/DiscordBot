@@ -1,18 +1,24 @@
 const { SlashCommandBuilder, AttachmentBuilder } = require('discord.js');
 const db = require('../../db.js');
-const { createCanvas, loadImage, registerFont } = require('@napi-rs/canvas');
+const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
 const path = require('path');
 const fs = require('fs');
 
-// Rejestracja czcionki (wykonuje się raz)
+// ====================== REJESTRACJA CZCIONKI ======================
 const fontPath = path.join(process.cwd(), 'JetBrainsMono-ExtraBold.ttf');
+
 if (fs.existsSync(fontPath)) {
-    registerFont(fontPath, { family: 'JetBrainsMono' });
-    console.log('✅ JetBrainsMono-ExtraBold załadowana');
+    try {
+        GlobalFonts.registerFromPath(fontPath, 'JetBrainsMono');
+        console.log('✅ JetBrainsMono-ExtraBold załadowana pomyślnie');
+    } catch (err) {
+        console.error('❌ Błąd rejestracji czcionki:', err);
+    }
 } else {
-    console.warn('⚠️ Nie znaleziono JetBrainsMono-ExtraBold.ttf – będzie użyta Georgia');
+    console.warn('⚠️ Plik JetBrainsMono-ExtraBold.ttf nie znaleziony – używam Georgia');
 }
 
+// ====================== KLASA GENERUJĄCA KWIT ======================
 class WorkCanvas {
     static async generatePaySlip(username, totalCoins, jobText) {
         const W = 1024;
@@ -22,7 +28,9 @@ class WorkCanvas {
 
         // Tło
         const bgPath = path.join(process.cwd(), 'praca.png');
-        if (!fs.existsSync(bgPath)) throw new Error('Brak pliku praca.png');
+        if (!fs.existsSync(bgPath)) {
+            throw new Error('Brak pliku praca.png w folderze głównym!');
+        }
 
         const bg = await loadImage(fs.readFileSync(bgPath));
         ctx.drawImage(bg, 0, 0, W, H);
@@ -62,7 +70,7 @@ class WorkCanvas {
 
         // ====================== KWOTA ======================
         ctx.textAlign = 'center';
-        ctx.font = `bold 28px ${fontFamily}`;   // większa niż w instrukcji, ale nadal bezpieczna
+        ctx.font = `bold 28px ${fontFamily}`;
         
         const amount = `ZAROBEK: ${totalCoins} ZŁ`;
 
@@ -85,14 +93,17 @@ class WorkCanvas {
     }
 }
 
-// Sprawdzenie bazy
+// ====================== SPRAWDZENIE BAZY ======================
 function checkDatabase() {
     try {
         const columns = db.prepare("PRAGMA table_info(economy)").all();
         if (!columns.find(c => c.name === 'xp')) {
             db.prepare("ALTER TABLE economy ADD COLUMN xp INTEGER DEFAULT 0").run();
+            console.log('[DB] Dodano kolumnę xp');
         }
-    } catch (e) { console.error(e); }
+    } catch (e) {
+        console.error('[DB] Błąd:', e);
+    }
 }
 checkDatabase();
 

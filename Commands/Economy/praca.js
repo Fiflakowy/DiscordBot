@@ -6,19 +6,18 @@ const fs = require('fs');
 
 // ====================== REJESTRACJA CZCIONKI ======================
 const fontPath = path.join(process.cwd(), 'JetBrainsMono-ExtraBold.ttf');
-
 if (fs.existsSync(fontPath)) {
     try {
         GlobalFonts.registerFromPath(fontPath, 'JetBrainsMono');
-        console.log('✅ JetBrainsMono-ExtraBold załadowana pomyślnie');
+        console.log('✅ JetBrainsMono-ExtraBold załadowana');
     } catch (err) {
-        console.error('❌ Błąd rejestracji czcionki:', err);
+        console.error('❌ Błąd czcionki:', err);
     }
 } else {
-    console.warn('⚠️ Plik JetBrainsMono-ExtraBold.ttf nie znaleziony – używam Georgia');
+    console.warn('⚠️ Brak JetBrainsMono-ExtraBold.ttf');
 }
 
-// ====================== KLASA GENERUJĄCA KWIT ======================
+// ====================== GENEROWANIE KWITU ======================
 class WorkCanvas {
     static async generatePaySlip(username, totalCoins, jobText) {
         const W = 1024;
@@ -26,11 +25,8 @@ class WorkCanvas {
         const canvas = createCanvas(W, H);
         const ctx = canvas.getContext('2d');
 
-        // Tło
         const bgPath = path.join(process.cwd(), 'praca.png');
-        if (!fs.existsSync(bgPath)) {
-            throw new Error('Brak pliku praca.png w folderze głównym!');
-        }
+        if (!fs.existsSync(bgPath)) throw new Error('Brak pliku praca.png');
 
         const bg = await loadImage(fs.readFileSync(bgPath));
         ctx.drawImage(bg, 0, 0, W, H);
@@ -43,25 +39,25 @@ class WorkCanvas {
 
         // ====================== NAGŁÓWEK ======================
         ctx.textAlign = 'center';
-        ctx.font = `bold 26px ${fontFamily}`;
-        ctx.fillText('OFICJALNY KWIT WYPŁATY', W / 2, 175);
+        ctx.font = `bold 27px ${fontFamily}`;
+        ctx.fillText('OFICJALNY KWIT WYPŁATY', W / 2, 172);
 
         // ====================== DANE ======================
         ctx.textAlign = 'left';
-        ctx.font = `bold 19px ${fontFamily}`;
+        ctx.font = `bold 20px ${fontFamily}`;
 
-        const leftX = 280;
-        let y = 240;
+        const leftX = 275;
+        let y = 245;
 
         ctx.fillText(`Pracownik: ${username}`, leftX, y);
-        y += 45;
+        y += 47;
 
-        const truncatedJob = jobText.length > 48 
-            ? jobText.substring(0, 45) + '...' 
+        const truncatedJob = jobText.length > 50 
+            ? jobText.substring(0, 47) + '...' 
             : jobText;
         
         ctx.fillText(`Zadanie: ${truncatedJob}`, leftX, y);
-        y += 45;
+        y += 47;
 
         const date = new Date().toLocaleDateString('pl-PL', {
             day: '2-digit', month: '2-digit', year: 'numeric'
@@ -70,22 +66,22 @@ class WorkCanvas {
 
         // ====================== KWOTA ======================
         ctx.textAlign = 'center';
-        ctx.font = `bold 28px ${fontFamily}`;
+        ctx.font = `bold 34px ${fontFamily}`;
         
         const amount = `ZAROBEK: ${totalCoins} ZŁ`;
 
         // Cień
         ctx.fillStyle = '#1C1408';
-        ctx.fillText(amount, W/2 + 2, 412);
+        ctx.fillText(amount, W/2 + 3, 418);
 
         // Główny tekst
         ctx.fillStyle = inkColor;
-        ctx.fillText(amount, W/2, 409);
+        ctx.fillText(amount, W/2, 414);
 
         // Obrys
         ctx.strokeStyle = '#1C1408';
-        ctx.lineWidth = 2.5;
-        ctx.strokeText(amount, W/2, 409);
+        ctx.lineWidth = 3;
+        ctx.strokeText(amount, W/2, 414);
 
         return new AttachmentBuilder(await canvas.encode('png'), { 
             name: 'kwit_wyplaty.png' 
@@ -93,17 +89,14 @@ class WorkCanvas {
     }
 }
 
-// ====================== SPRAWDZENIE BAZY ======================
+// ====================== BAZA ======================
 function checkDatabase() {
     try {
         const columns = db.prepare("PRAGMA table_info(economy)").all();
         if (!columns.find(c => c.name === 'xp')) {
             db.prepare("ALTER TABLE economy ADD COLUMN xp INTEGER DEFAULT 0").run();
-            console.log('[DB] Dodano kolumnę xp');
         }
-    } catch (e) {
-        console.error('[DB] Błąd:', e);
-    }
+    } catch (e) { console.error(e); }
 }
 checkDatabase();
 

@@ -58,7 +58,7 @@ module.exports = (client) => {
     });
 
     // ==========================================
-    // LOGOWANIE ZMIAN RÓL
+    // LOGOWANIE ZMIAN RÓL — BARDZO SZCZEGÓŁOWE
     // ==========================================
     client.on('guildMemberUpdate', async (oldMember, newMember) => {
         if (oldMember.roles.cache.size === newMember.roles.cache.size) return;
@@ -66,40 +66,63 @@ module.exports = (client) => {
         const logChannel = newMember.guild.channels.cache.get(logChannelId);
         if (!logChannel) return;
 
-        const added = newMember.roles.cache.filter(r => !oldMember.roles.cache.has(r.id));
-        const removed = oldMember.roles.cache.filter(r => !newMember.roles.cache.has(r.id));
+        const addedRoles = newMember.roles.cache.filter(role => !oldMember.roles.cache.has(role.id));
+        const removedRoles = oldMember.roles.cache.filter(role => !newMember.roles.cache.has(role.id));
 
-        if (added.size > 0) {
-            logChannel.send({
-                embeds: [new EmbedBuilder()
-                    .setColor('#2ecc71')
-                    .setTitle('🎖️ Nadano nowe role')
-                    .addFields(
-                        { name: '👤 Użytkownik', value: `${newMember.user.tag} (<@${newMember.id}>)` },
-                        { name: '➕ Nadane role', value: added.map(r => `<@&${r.id}>`).join('\n') || 'Brak' }
-                    )
-                    .setTimestamp()
-                ]
+        // Pobieranie kto nadał/zabrał rolę (Audit Logs)
+        let executor = "Nieznany (brak uprawnień do audit logs)";
+        try {
+            const auditLogs = await newMember.guild.fetchAuditLogs({
+                limit: 1,
+                type: 25 // MEMBER_ROLE_UPDATE
             });
+            const entry = auditLogs.entries.first();
+            if (entry && entry.target.id === newMember.id) {
+                executor = `${entry.executor.tag} (<@${entry.executor.id}>)`;
+            }
+        } catch (e) {
+            console.error('Audit Logs error:', e.message);
         }
 
-        if (removed.size > 0) {
-            logChannel.send({
-                embeds: [new EmbedBuilder()
-                    .setColor('#3498db')
-                    .setTitle('📉 Zabano role')
-                    .addFields(
-                        { name: '👤 Użytkownik', value: `${newMember.user.tag} (<@${newMember.id}>)` },
-                        { name: '➖ Zabane role', value: removed.map(r => `<@&${r.id}>`).join('\n') || 'Brak' }
-                    )
-                    .setTimestamp()
-                ]
-            });
+        // --- NADANO ROLE ---
+        if (addedRoles.size > 0) {
+            const embed = new EmbedBuilder()
+                .setColor('#2ecc71')
+                .setTitle('🎖️ Nadano nowe role')
+                .setThumbnail(newMember.user.displayAvatarURL({ dynamic: true }))
+                .addFields(
+                    { name: '👤 Użytkownik', value: `${newMember.user.tag}\n(<@${newMember.id}>)`, inline: false },
+                    { name: '➕ Nadana rola', value: addedRoles.map(r => `**${r.name}** (<@&${r.id}>)`).join('\n'), inline: false },
+                    { name: '🛠️ Wykonano przez', value: executor, inline: false },
+                    { name: '⏰ Czas', value: `<t:${Math.floor(Date.now()/1000)}:F>`, inline: false }
+                )
+                .setFooter({ text: 'Log zmian ról • Zakon Fiflaka' })
+                .setTimestamp();
+
+            logChannel.send({ embeds: [embed] });
+        }
+
+        // --- ZABRANO ROLE ---
+        if (removedRoles.size > 0) {
+            const embed = new EmbedBuilder()
+                .setColor('#e74c3c')
+                .setTitle('📉 Zabano role')
+                .setThumbnail(newMember.user.displayAvatarURL({ dynamic: true }))
+                .addFields(
+                    { name: '👤 Użytkownik', value: `${newMember.user.tag}\n(<@${newMember.id}>)`, inline: false },
+                    { name: '➖ Zabana rola', value: removedRoles.map(r => `**${r.name}** (<@&${r.id}>)`).join('\n'), inline: false },
+                    { name: '🛠️ Wykonano przez', value: executor, inline: false },
+                    { name: '⏰ Czas', value: `<t:${Math.floor(Date.now()/1000)}:F>`, inline: false }
+                )
+                .setFooter({ text: 'Log zmian ról • Zakon Fiflaka' })
+                .setTimestamp();
+
+            logChannel.send({ embeds: [embed] });
         }
     });
 
     // ==========================================
-    // GŁÓWNA MODERACJA
+    // GŁÓWNA MODERACJA WIADOMOŚCI
     // ==========================================
     client.on('messageCreate', async (message) => {
         if (!message.guild || message.author.bot) return;
@@ -169,12 +192,12 @@ module.exports = (client) => {
                            forbiddenPatterns.find(p => clean.includes(p));
 
         if (detectedWord) {
-            return handleAutoWarn(message, `Używanie wulgaryzmów (wykryto: ${detectedWord})`, content);
+            return handleAutoWarn(message, `Używanie wulgaryzmów (wykryto: "${detectedWord}")`, content);
         }
     });
 
     // ==========================================
-    // FUNKCJA AUTO-WARN (ZWIĘKSZONA SZCZEGÓŁOWOŚĆ)
+    // FUNKCJA AUTO-WARN (SZCZEGÓŁOWA)
     // ==========================================
     async function handleAutoWarn(message, reason, originalContent = "") {
         try {
@@ -203,7 +226,7 @@ module.exports = (client) => {
                 content: `⚠️ <@${userId}>, **${reason}**!\nTo Twoje **${warnCount}** ostrzeżenie.`
             }).then(msg => setTimeout(() => msg.delete().catch(() => {}), 10000));
 
-            // DM - bardzo szczegółowy
+            // DM do użytkownika
             const dmEmbed = new EmbedBuilder()
                 .setColor('#E74C3C')
                 .setTitle(`⚔️ Ostrzeżenie od Straży Zakonu`)
@@ -212,7 +235,7 @@ module.exports = (client) => {
                     { name: '📛 Powód', value: reason, inline: false },
                     { name: '🔢 Liczba ostrzeżeń', value: `**${warnCount}** / 5`, inline: true },
                     { name: '🔨 Konsekwencja', value: actionText, inline: true },
-                    { name: '📝 Treść Twojej wiadomości', value: `\`\`\`${originalContent.slice(0, 800)}\`\`\`` || "Brak tekstu" }
+                    { name: '📝 Treść wiadomości', value: `\`\`\`${originalContent.slice(0, 800)}\`\`\`` || "Brak tekstu" }
                 )
                 .setFooter({ text: 'Kolejne ostrzeżenie może skutkować dłuższą karą.' })
                 .setTimestamp();

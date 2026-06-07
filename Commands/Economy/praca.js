@@ -6,7 +6,7 @@ const fs = require('fs');
 
 class WorkCanvas {
     static async generatePaySlip(username, totalCoins, jobText) {
-        const W = 1024, H = 555;
+        const W = 1024, H = 576; // Wymiary tła
         const canvas = createCanvas(W, H);
         const ctx = canvas.getContext('2d');
 
@@ -15,42 +15,42 @@ class WorkCanvas {
         const bg = await loadImage(fs.readFileSync(bgPath));
         ctx.drawImage(bg, 0, 0, W, H);
 
-        // Ustawienia tekstu
+        // Ustawienia stylu (Kolor "atramentu")
+        const inkColor = '#2B1E10'; 
+        ctx.fillStyle = inkColor;
         ctx.textBaseline = 'middle';
-        const startX = 260; // Lewy margines pergaminu
 
-        // 1. Tytuł (wyśrodkowany na górze pergaminu)
+        // 1. Nagłówek (Wyśrodkowany na pergaminie)
         ctx.textAlign = 'center';
-        ctx.fillStyle = '#2c2c2c';
-        ctx.font = 'bold 40px sans-serif';
-        ctx.fillText('OFICJALNY KWIT WYPŁATY', W / 2, 170);
+        ctx.font = 'bold 42px Georgia, serif';
+        ctx.fillText('OFICJALNY KWIT WYPŁATY', W / 2, 160);
 
-        // 2. Dane pracownika (wyrównane do lewej)
+        // 2. Dane pracownika (Wyrównane do lewej, margines 270px)
         ctx.textAlign = 'left';
-        ctx.font = 'bold 28px sans-serif';
-        ctx.fillText(`Zleceniobiorca: ${username}`, startX, 240);
+        ctx.font = '28px Georgia, serif';
         
-        ctx.font = '24px sans-serif';
-        const displayJob = jobText.length > 35 ? jobText.substring(0, 32) + '...' : jobText;
-        ctx.fillText(`Zadanie: ${displayJob}`, startX, 285);
+        ctx.fillText(`Pracownik: ${username}`, 270, 220);
+        ctx.fillText(`Zadanie: ${jobText.length > 30 ? jobText.substring(0, 27) + '...' : jobText}`, 270, 265);
+        
+        const date = new Date().toLocaleDateString('pl-PL');
+        ctx.fillText(`Data: ${date}`, 270, 310);
 
-        // 3. Kwota (wyrównana do lewej, większa i złota)
-        ctx.fillStyle = '#b8860b';
-        ctx.font = 'bold 70px sans-serif';
-        ctx.fillText(`+${totalCoins} ZŁ`, startX, 380);
+        // 3. Kwota (Wyróżniona na dole)
+        ctx.font = 'bold 45px Georgia, serif';
+        ctx.fillText(`ZAROBEK: ${totalCoins} ZŁ`, 350, 390);
 
         return new AttachmentBuilder(await canvas.encode('png'), { name: 'payslip.png' });
     }
 }
 
-// Funkcja naprawy bazy (bezpieczna)
+// Funkcja naprawy bazy
 function checkDatabase() {
     try {
         const columns = db.prepare("PRAGMA table_info(economy)").all();
         if (!columns.find(c => c.name === 'xp')) {
             db.prepare("ALTER TABLE economy ADD COLUMN xp INTEGER DEFAULT 0").run();
         }
-    } catch (e) { console.error("Błąd bazy:", e); }
+    } catch (e) { console.error(e); }
 }
 checkDatabase();
 
@@ -62,20 +62,19 @@ module.exports = {
     async execute(interaction) {
         await interaction.deferReply();
         const userId = interaction.user.id;
-        const guildId = interaction.guild.id;
         const totalPay = Math.floor(Math.random() * 60) + 20;
         const job = "Rąbanie drewna w lesie"; 
 
-        db.prepare('INSERT OR IGNORE INTO economy (userId, guildId, coins, xp) VALUES (?, ?, 0, 0)').run(userId, guildId);
+        db.prepare('INSERT OR IGNORE INTO economy (userId, guildId, coins, xp) VALUES (?, ?, 0, 0)').run(userId, interaction.guild.id);
         db.prepare('UPDATE economy SET coins = coins + ?, xp = xp + 10 WHERE userId = ? AND guildId = ?')
-          .run(totalPay, userId, guildId);
+          .run(totalPay, userId, interaction.guild.id);
 
         try {
             const image = await WorkCanvas.generatePaySlip(interaction.user.username, totalPay, job);
             await interaction.editReply({ files: [image] });
         } catch (e) {
             console.error(e);
-            await interaction.editReply("Wystąpił błąd podczas generowania obrazka.");
+            await interaction.editReply("Wystąpił błąd podczas generowania kwitu.");
         }
     }
 };

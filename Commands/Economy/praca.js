@@ -14,64 +14,61 @@ class WorkCanvas {
         // Wczytanie tła
         const bgPath = path.join(process.cwd(), 'praca.png');
         if (!fs.existsSync(bgPath)) {
-            throw new Error('Brak pliku praca.png w folderze głównym projektu!');
+            throw new Error('Brak pliku praca.png w folderze głównym!');
         }
 
         const bg = await loadImage(fs.readFileSync(bgPath));
         ctx.drawImage(bg, 0, 0, W, H);
 
-        // Kolor atramentu
         const inkColor = '#2B1E10';
         ctx.fillStyle = inkColor;
         ctx.textBaseline = 'middle';
 
         // ====================== NAGŁÓWEK ======================
         ctx.textAlign = 'center';
-        ctx.font = 'bold 52px Georgia, serif';
-        ctx.fillText('OFICJALNY KWIT WYPŁATY', W / 2, 138);
+        ctx.font = 'bold 46px Georgia, serif';
+        ctx.fillText('OFICJALNY KWIT WYPŁATY', W / 2, 125);
 
-        // ====================== DANE PRACOWNIKA ======================
+        // ====================== DANE ======================
         ctx.textAlign = 'left';
         ctx.font = 'bold 29px Georgia, serif';
 
-        const leftX = 255;
-        let y = 225;
+        const leftX = 248;
+        let y = 235;
 
         ctx.fillText(`Pracownik: ${username}`, leftX, y);
-        y += 48;
+        y += 50;
 
-        const truncatedJob = jobText.length > 42 
-            ? jobText.substring(0, 39) + '...' 
+        const truncatedJob = jobText.length > 45 
+            ? jobText.substring(0, 42) + '...' 
             : jobText;
         
         ctx.fillText(`Zadanie: ${truncatedJob}`, leftX, y);
-        y += 48;
+        y += 50;
 
         const date = new Date().toLocaleDateString('pl-PL', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric'
+            day: '2-digit', month: '2-digit', year: 'numeric'
         });
         ctx.fillText(`Data: ${date}`, leftX, y);
 
-        // ====================== KWOTA WYRÓŻNIONA ======================
+        // ====================== KWOTA ======================
         ctx.textAlign = 'center';
-        ctx.font = 'bold 58px Georgia, serif';
+        ctx.font = 'bold 62px Georgia, serif';
         
         const amount = `ZAROBEK: ${totalCoins} ZŁ`;
 
-        // Cień dla głębi
+        // Cień
         ctx.fillStyle = '#1C1408';
-        ctx.fillText(amount, W/2 + 3, 395);
+        ctx.fillText(amount, W/2 + 4, 407);
 
         // Główny tekst
         ctx.fillStyle = inkColor;
-        ctx.fillText(amount, W/2, 392);
+        ctx.fillText(amount, W/2, 403);
 
-        // Subtelny obrys
+        // Obrys dla lepszej czytelności
         ctx.strokeStyle = '#1C1408';
-        ctx.lineWidth = 3;
-        ctx.strokeText(amount, W/2, 392);
+        ctx.lineWidth = 4;
+        ctx.strokeText(amount, W/2, 403);
 
         return new AttachmentBuilder(await canvas.encode('png'), { 
             name: 'kwit_wyplaty.png' 
@@ -79,16 +76,16 @@ class WorkCanvas {
     }
 }
 
-// Naprawa tabeli economy (dodanie xp jeśli brakuje)
+// Sprawdzenie bazy
 function checkDatabase() {
     try {
         const columns = db.prepare("PRAGMA table_info(economy)").all();
         if (!columns.find(c => c.name === 'xp')) {
             db.prepare("ALTER TABLE economy ADD COLUMN xp INTEGER DEFAULT 0").run();
-            console.log('[DB] Dodano kolumnę xp do tabeli economy');
+            console.log('[DB] Dodano kolumnę xp');
         }
     } catch (e) {
-        console.error('[DB] Błąd sprawdzania tabeli:', e);
+        console.error('[DB] Błąd:', e);
     }
 }
 checkDatabase();
@@ -107,7 +104,6 @@ module.exports = {
         const totalPay = Math.floor(Math.random() * 60) + 20;
         const job = "Rąbanie drewna w lesie";
 
-        // Aktualizacja ekonomii
         db.prepare('INSERT OR IGNORE INTO economy (userId, guildId, coins, xp) VALUES (?, ?, 0, 0)')
           .run(userId, guildId);
 
@@ -127,7 +123,7 @@ module.exports = {
             });
         } catch (e) {
             console.error('Błąd generowania kwitu:', e);
-            await interaction.editReply("❌ Wystąpił błąd podczas generowania kwitu wypłaty.");
+            await interaction.editReply("❌ Wystąpił błąd podczas generowania kwitu.");
         }
     }
 };

@@ -2,22 +2,24 @@ const { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder, MessageFlags } = r
 const db = require('../../db.js');
 const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
 const path = require('path');
+const fs = require('fs');
 
-// Rejestracja czcionki (jeśli używasz JetBrainsMono)
+// Rejestracja czcionki
 GlobalFonts.registerFromPath(path.join(__dirname, 'JetBrainsMono-ExtraBold.ttf'), 'JetBrainsMono');
 
 class WorkCanvas {
     static async generatePaySlip(username, totalCoins, jobText) {
-        // Wymiary Twojego tła
         const W = 1024, H = 555;
         const canvas = createCanvas(W, H);
         const ctx = canvas.getContext('2d');
 
-        // 1. Wczytanie tła "praca.png"
-        const bg = await loadImage(path.join(__dirname, 'praca.png'));
+        // Wczytywanie obrazka przez Buffer (najpewniejsza metoda na Railway)
+        const bgPath = path.join(__dirname, 'praca.png');
+        const imageBuffer = fs.readFileSync(bgPath);
+        const bg = await loadImage(imageBuffer);
         ctx.drawImage(bg, 0, 0, W, H);
 
-        // 2. Ustawienia tekstu
+        // Stylizacja tekstu
         ctx.textAlign = 'center';
         ctx.fillStyle = '#2c2c2c';
 
@@ -30,7 +32,7 @@ class WorkCanvas {
         ctx.fillText(`Zleceniobiorca: ${username}`, W / 2, 230);
         ctx.fillText(`Zadanie: ${jobText}`, W / 2, 270);
 
-        // Kwota
+        // Kwota (Złoty kolor)
         ctx.fillStyle = '#b8860b';
         ctx.font = 'bold 60px JetBrainsMono';
         ctx.fillText(`+${totalCoins} ZŁ`, W / 2, 380);
@@ -61,7 +63,7 @@ module.exports = {
         const guildId = interaction.guild.id;
 
         const totalPay = Math.floor(Math.random() * 60) + 20;
-        const job = "Rąbanie drewna w lesie"; // Możesz tu dodać losowanie z tablicy
+        const job = "Rąbanie drewna w lesie"; 
 
         // Aktualizacja bazy
         db.prepare('INSERT OR IGNORE INTO economy (userId, guildId, coins, xp) VALUES (?, ?, 0, 0)').run(userId, guildId);
@@ -69,10 +71,12 @@ module.exports = {
           .run(totalPay, userId, guildId);
 
         // Generowanie grafiki
-        const image = await WorkCanvas.generatePaySlip(interaction.user.username, totalPay, job);
-
-        await interaction.editReply({
-            files: [image]
-        });
+        try {
+            const image = await WorkCanvas.generatePaySlip(interaction.user.username, totalPay, job);
+            await interaction.editReply({ files: [image] });
+        } catch (error) {
+            console.error(error);
+            await interaction.editReply("Wystąpił błąd podczas generowania kwitu wypłaty.");
+        }
     }
 };

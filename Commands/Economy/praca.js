@@ -1,11 +1,11 @@
-const { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder, MessageFlags } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const db = require('../../db.js');
 const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
 const path = require('path');
 const fs = require('fs');
 
-// Rejestracja czcionki
-GlobalFonts.registerFromPath(path.join(__dirname, 'JetBrainsMono-ExtraBold.ttf'), 'JetBrainsMono');
+// Rejestracja czcionki - pamiętaj, że plik jest w głównym folderze, więc zmieniamy ścieżkę
+GlobalFonts.registerFromPath(path.join(process.cwd(), 'JetBrainsMono-ExtraBold.ttf'), 'JetBrainsMono');
 
 class WorkCanvas {
     static async generatePaySlip(username, totalCoins, jobText) {
@@ -13,8 +13,8 @@ class WorkCanvas {
         const canvas = createCanvas(W, H);
         const ctx = canvas.getContext('2d');
 
-        // Wczytywanie obrazka przez Buffer (najpewniejsza metoda na Railway)
-        const bgPath = path.join(__dirname, 'praca.png');
+        // Wczytywanie tła z głównego folderu
+        const bgPath = path.join(process.cwd(), 'praca.png');
         const imageBuffer = fs.readFileSync(bgPath);
         const bg = await loadImage(imageBuffer);
         ctx.drawImage(bg, 0, 0, W, H);

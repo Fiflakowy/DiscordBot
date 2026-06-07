@@ -31,8 +31,8 @@ class WorkCanvas {
         const bg = await loadImage(fs.readFileSync(bgPath));
         ctx.drawImage(bg, 0, 0, W, H);
 
-        const inkColor = '#2B1E10';
-        ctx.fillStyle = inkColor;
+        const inkColor = '#2B1E10';        // główny kolor atramentu
+        const goldColor = '#D4AF37';       // złoty akcent na kwotę
         ctx.textBaseline = 'middle';
 
         const fontFamily = fs.existsSync(fontPath) ? 'JetBrainsMono' : 'Georgia, serif';
@@ -40,11 +40,13 @@ class WorkCanvas {
         // ====================== NAGŁÓWEK ======================
         ctx.textAlign = 'center';
         ctx.font = `bold 27px ${fontFamily}`;
+        ctx.fillStyle = inkColor;
         ctx.fillText('OFICJALNY KWIT WYPŁATY', W / 2, 172);
 
         // ====================== DANE ======================
         ctx.textAlign = 'left';
         ctx.font = `bold 20px ${fontFamily}`;
+        ctx.fillStyle = inkColor;
 
         const leftX = 275;
         let y = 245;
@@ -70,17 +72,17 @@ class WorkCanvas {
         
         const amount = `ZAROBEK: ${totalCoins} ZŁ`;
 
-        // Cień
+        // Delikatny cień dla lepszej widoczności
         ctx.fillStyle = '#1C1408';
         ctx.fillText(amount, W/2 + 3, 418);
 
-        // Główny tekst
-        ctx.fillStyle = inkColor;
+        // Główny kolor kwoty (złoty akcent)
+        ctx.fillStyle = goldColor;
         ctx.fillText(amount, W/2, 414);
 
-        // Obrys
+        // Bardzo delikatny obrys (zmniejszony, żeby nie był za gruby)
         ctx.strokeStyle = '#1C1408';
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 1.5;
         ctx.strokeText(amount, W/2, 414);
 
         return new AttachmentBuilder(await canvas.encode('png'), { 

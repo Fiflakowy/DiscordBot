@@ -45,9 +45,8 @@ module.exports = (client) => {
                 await member.roles.add(role);
                 console.log(`✅ [AUTOROLE] Nadano rolę dla: ${member.user.tag}`);
 
-                // Piękny list powitalny od Karczmarza na DM!
                 const welcomeEmbed = new EmbedBuilder()
-                    .setColor('#D4AF37') // Złoto Karczmy
+                    .setColor('#D4AF37') 
                     .setAuthor({ name: 'Zakon Fiflaka', iconURL: member.guild.iconURL({ dynamic: true }) })
                     .setTitle('🍻 Witaj w naszych progach, Wędrowcze!')
                     .setDescription(`Brama Zakonu została przed Tobą otwarta. Znajdź wolne miejsce przy kominku, napij się miodu i poznaj braci.`)
@@ -58,7 +57,7 @@ module.exports = (client) => {
                     .setFooter({ text: 'Niech Twoja legenda rozpocznie się tutaj.' })
                     .setTimestamp();
                 
-                await member.send({ embeds: [welcomeEmbed] }).catch(() => {}); // Łapiemy błąd jeśli DM wyłączone
+                await member.send({ embeds: [welcomeEmbed] }).catch(() => {}); 
             }
         } catch (err) {
             console.error('❌ [AUTOROLE] Błąd:', err);
@@ -66,42 +65,47 @@ module.exports = (client) => {
     });
 
     // ==========================================
-    // 3. LOGOWANIE ZMIAN RÓL (W tym odjęcie roli)
+    // 3. LOGOWANIE ZMIAN RÓL (Poprawione filtrowanie)
     // ==========================================
     client.on('guildMemberUpdate', async (oldMember, newMember) => {
-        // Sprawdzamy, czy zmieniła się liczba ról
-        if (oldMember.roles.cache.size !== newMember.roles.cache.size) {
-            const addedRoles = newMember.roles.cache.filter(role => !oldMember.roles.cache.has(role.id));
-            const removedRoles = oldMember.roles.cache.filter(role => !newMember.roles.cache.has(role.id));
+        const oldRoles = oldMember.roles.cache;
+        const newRoles = newMember.roles.cache;
 
+        if (oldRoles.size !== newRoles.size) {
             const logChannel = newMember.guild.channels.cache.get(logChannelId);
             if (!logChannel) return;
 
-            // Logowanie nadania ról
+            // Filtrowanie ról na podstawie ID ról (czysta i odporna na błędy metoda)
+            const addedRoles = newRoles.filter(role => !oldRoles.has(role.id));
+            const removedRoles = oldRoles.filter(role => !newRoles.has(role.id));
+
+            // Logowanie wyłącznie NADANIA ról (jeśli faktycznie jakaś przybyła)
             if (addedRoles.size > 0) {
                 const addEmbed = new EmbedBuilder()
                     .setColor('#2ecc71')
                     .setTitle('🎖️ Nadano nowe odznaczenia (Role)')
                     .addFields(
                         { name: '👤 Obywatel', value: `${newMember.user.tag}\n(<@${newMember.id}>)`, inline: true },
-                        { name: '🛡️ Nadający', value: `${newMember.guild.me ? newMember.guild.me.user.tag : client.user.tag}`, inline: true },
                         { name: '➕ Otrzymane role', value: addedRoles.map(r => `<@&${r.id}>`).join('\n'), inline: false }
                     )
+                    .setFooter({ text: 'Zmiana statusu na serwerze' })
                     .setTimestamp();
+                
                 logChannel.send({ embeds: [addEmbed] });
             }
 
-            // Logowanie zabrania ról (Odjęcie roli)
+            // Logowanie wyłącznie ZABRANIA ról (jeśli faktycznie jakaś ubyła)
             if (removedRoles.size > 0) {
                 const remEmbed = new EmbedBuilder()
                     .setColor('#3498db')
                     .setTitle('📉 Zabrano odznaczenia (Role)')
                     .addFields(
                         { name: '👤 Obywatel', value: `${newMember.user.tag}\n(<@${newMember.id}>)`, inline: true },
-                        { name: '🛡️ Odbierający', value: `${newMember.guild.me ? newMember.guild.me.user.tag : client.user.tag}`, inline: true },
                         { name: '➖ Stracone role', value: removedRoles.map(r => `<@&${r.id}>`).join('\n'), inline: false }
                     )
+                    .setFooter({ text: 'Zmiana statusu na serwerze' })
                     .setTimestamp();
+
                 logChannel.send({ embeds: [remEmbed] });
             }
         }
@@ -118,7 +122,6 @@ module.exports = (client) => {
 
         const userId = message.author.id;
 
-        // Czy użytkownik ma pełen immunitet (Administracja)?
         const isAdmin = member.roles.cache.some(r => adminRoles.includes(r.id));
         if (isAdmin) return; 
 
@@ -131,12 +134,11 @@ module.exports = (client) => {
         const now = Date.now();
         userTimestamps.push(now);
 
-        // Usuwamy stare logi (starsze niż 5 sekund)
         const recentTimestamps = userTimestamps.filter(time => now - time < SPAM_TIME);
         userSpamMap.set(userId, recentTimestamps);
 
         if (recentTimestamps.length > SPAM_LIMIT) {
-            userSpamMap.set(userId, []); // Czyścimy limit żeby bot nie wysłał 10 warnów naraz
+            userSpamMap.set(userId, []); 
             return handleAutoWarn(message, "wywoływać rabanu i spamować na czacie");
         }
 
@@ -200,10 +202,8 @@ module.exports = (client) => {
         const guildId = message.guild.id;
 
         try {
-            // 1. Kasujemy wiadomość naruszającą regulamin
             await message.delete().catch(() => {});
 
-            // 2. Dodajemy warna do bazy danych
             db.prepare('INSERT OR IGNORE INTO warnings (userId, guildId, warnCount) VALUES (?, ?, 0)').run(userId, guildId);
             db.prepare('UPDATE warnings SET warnCount = warnCount + 1 WHERE userId = ? AND guildId = ?').run(userId, guildId);
 
@@ -212,7 +212,6 @@ module.exports = (client) => {
 
             let actionText = "Ostrzeżenie zostało wyrzeźbione w Twojej kartotece.";
             
-            // 3. LOGIKA KAR AUTOMATYCZNYCH (TIMEOUT)
             if (warnCount === 3) {
                 await message.member.timeout(10 * 60 * 1000, 'Automatyczna kara za 3 ostrzeżenia');
                 actionText = "Ze względu na 3 ostrzeżenia, nakładamy na Ciebie **Knebel (Timeout) na 10 minut**.";
@@ -223,13 +222,11 @@ module.exports = (client) => {
                 db.prepare('UPDATE warnings SET warnCount = 0 WHERE userId = ? AND guildId = ?').run(userId, guildId);
             }
 
-            // 4. Powiadomienie na kanale publicznym (znika po 7 sekundach)
             const warningEmbed = await message.channel.send({
                 content: `⚠️ <@${userId}>, Straż Zakonu nie pozwala tutaj **${reason}**! To Twoje **${warnCount}** ostrzeżenie.`
             });
             setTimeout(() => warningEmbed.delete().catch(() => {}), 7000);
 
-            // 5. WYSYŁANIE WIADOMOŚCI PRYWATNEJ (DM) DO UŻYTKOWNIKA
             try {
                 const dmEmbed = new EmbedBuilder()
                     .setColor('#E74C3C')
@@ -245,11 +242,8 @@ module.exports = (client) => {
                     .setTimestamp();
                 
                 await message.author.send({ embeds: [dmEmbed] });
-            } catch (dmError) {
-                // Użytkownik zablokował DM
-            }
+            } catch (dmError) {}
 
-            // 6. Logowanie do kanału administracyjnego (Strażnica)
             const logChannel = message.guild.channels.cache.get(logChannelId);
             if (logChannel) {
                 const logEmbed = new EmbedBuilder()

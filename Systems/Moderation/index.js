@@ -58,26 +58,30 @@ module.exports = (client) => {
     });
 
     // ==========================================
-    // LOGOWANIE ZMIAN RÓL — BARDZO SZCZEGÓŁOWE
+    // LOGOWANIE ZMIAN RÓL — POPRAWIONA WERSJA
     // ==========================================
     client.on('guildMemberUpdate', async (oldMember, newMember) => {
-        if (oldMember.roles.cache.size === newMember.roles.cache.size) return;
+        const oldRoles = oldMember.roles.cache;
+        const newRoles = newMember.roles.cache;
+
+        if (oldRoles.size === newRoles.size) return;
 
         const logChannel = newMember.guild.channels.cache.get(logChannelId);
         if (!logChannel) return;
 
-        const addedRoles = newMember.roles.cache.filter(role => !oldMember.roles.cache.has(role.id));
-        const removedRoles = oldMember.roles.cache.filter(role => !newMember.roles.cache.has(role.id));
+        // Dokładne różnice
+        const addedRoles = newRoles.filter(role => !oldRoles.has(role.id));
+        const removedRoles = oldRoles.filter(role => !newRoles.has(role.id));
 
-        // Pobieranie kto nadał/zabrał rolę (Audit Logs)
-        let executor = "Nieznany (brak uprawnień do audit logs)";
+        // Pobieranie moderatora z Audit Logs
+        let executor = "Nieznany (brak dostępu)";
         try {
             const auditLogs = await newMember.guild.fetchAuditLogs({
-                limit: 1,
+                limit: 5,
                 type: 25 // MEMBER_ROLE_UPDATE
             });
-            const entry = auditLogs.entries.first();
-            if (entry && entry.target.id === newMember.id) {
+            const entry = auditLogs.entries.find(e => e.target.id === newMember.id);
+            if (entry && entry.executor) {
                 executor = `${entry.executor.tag} (<@${entry.executor.id}>)`;
             }
         } catch (e) {
@@ -88,11 +92,11 @@ module.exports = (client) => {
         if (addedRoles.size > 0) {
             const embed = new EmbedBuilder()
                 .setColor('#2ecc71')
-                .setTitle('🎖️ Nadano nowe role')
+                .setTitle(`🎖️ Nadano role (${addedRoles.size})`)
                 .setThumbnail(newMember.user.displayAvatarURL({ dynamic: true }))
                 .addFields(
                     { name: '👤 Użytkownik', value: `${newMember.user.tag}\n(<@${newMember.id}>)`, inline: false },
-                    { name: '➕ Nadana rola', value: addedRoles.map(r => `**${r.name}** (<@&${r.id}>)`).join('\n'), inline: false },
+                    { name: '➕ Nadane role', value: addedRoles.map(r => `**${r.name}** (<@&${r.id}>)`).join('\n'), inline: false },
                     { name: '🛠️ Wykonano przez', value: executor, inline: false },
                     { name: '⏰ Czas', value: `<t:${Math.floor(Date.now()/1000)}:F>`, inline: false }
                 )
@@ -106,11 +110,11 @@ module.exports = (client) => {
         if (removedRoles.size > 0) {
             const embed = new EmbedBuilder()
                 .setColor('#e74c3c')
-                .setTitle('📉 Zabano role')
+                .setTitle(`📉 Zabano role (${removedRoles.size})`)
                 .setThumbnail(newMember.user.displayAvatarURL({ dynamic: true }))
                 .addFields(
                     { name: '👤 Użytkownik', value: `${newMember.user.tag}\n(<@${newMember.id}>)`, inline: false },
-                    { name: '➖ Zabana rola', value: removedRoles.map(r => `**${r.name}** (<@&${r.id}>)`).join('\n'), inline: false },
+                    { name: '➖ Zabane role', value: removedRoles.map(r => `**${r.name}** (<@&${r.id}>)`).join('\n'), inline: false },
                     { name: '🛠️ Wykonano przez', value: executor, inline: false },
                     { name: '⏰ Czas', value: `<t:${Math.floor(Date.now()/1000)}:F>`, inline: false }
                 )
@@ -135,7 +139,7 @@ module.exports = (client) => {
         const userId = message.author.id;
         const content = message.content;
 
-        // === ANTI-SPAM ===
+        // ANTI-SPAM
         if (!userSpamMap.has(userId)) userSpamMap.set(userId, []);
         const timestamps = userSpamMap.get(userId);
         const now = Date.now();
@@ -148,12 +152,12 @@ module.exports = (client) => {
             return handleAutoWarn(message, "Spam (zbyt szybkie pisanie)", content);
         }
 
-        // === INVITE ===
+        // INVITE
         if (inviteRegex.test(content)) {
             return handleAutoWarn(message, "Wysyłanie zaproszeń na inne serwery Discord", content);
         }
 
-        // === LINKI ===
+        // LINKI
         const canSendLinks = member.roles.cache.has(bypassLinkRole);
         if (!canSendLinks) {
             const links = content.match(generalLinkRegex);
@@ -166,12 +170,12 @@ module.exports = (client) => {
             }
         }
 
-        // === MASS MENTION ===
+        // MASS MENTION
         if (message.mentions.users.size > MASS_MENTION_MAX) {
             return handleAutoWarn(message, `Mass Mention (więcej niż ${MASS_MENTION_MAX} oznaczeń)`, content);
         }
 
-        // === CAPS LOCK ===
+        // CAPS LOCK
         if (content.length > CAPS_LOCK_MIN_LEN) {
             const letters = content.replace(/[^a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/g, '');
             if (letters.length > 0) {
@@ -182,7 +186,7 @@ module.exports = (client) => {
             }
         }
 
-        // === WULGARYZMY ===
+        // WULGARYZMY
         let clean = content.toLowerCase()
             .replace(/(.)\1+/g, '$1')
             .replace(/[0-9]/g, m => ({'0':'o','1':'i','3':'e','4':'a','5':'s','7':'t'})[m] || m)
@@ -197,7 +201,7 @@ module.exports = (client) => {
     });
 
     // ==========================================
-    // FUNKCJA AUTO-WARN (SZCZEGÓŁOWA)
+    // FUNKCJA AUTO-WARN
     // ==========================================
     async function handleAutoWarn(message, reason, originalContent = "") {
         try {
@@ -226,15 +230,15 @@ module.exports = (client) => {
                 content: `⚠️ <@${userId}>, **${reason}**!\nTo Twoje **${warnCount}** ostrzeżenie.`
             }).then(msg => setTimeout(() => msg.delete().catch(() => {}), 10000));
 
-            // DM do użytkownika
+            // DM
             const dmEmbed = new EmbedBuilder()
                 .setColor('#E74C3C')
                 .setTitle(`⚔️ Ostrzeżenie od Straży Zakonu`)
                 .setDescription(`Złamano zasady na serwerze **${message.guild.name}**`)
                 .addFields(
-                    { name: '📛 Powód', value: reason, inline: false },
-                    { name: '🔢 Liczba ostrzeżeń', value: `**${warnCount}** / 5`, inline: true },
-                    { name: '🔨 Konsekwencja', value: actionText, inline: true },
+                    { name: '📛 Powód', value: reason },
+                    { name: '🔢 Liczba ostrzeżeń', value: `**${warnCount}** / 5` },
+                    { name: '🔨 Konsekwencja', value: actionText },
                     { name: '📝 Treść wiadomości', value: `\`\`\`${originalContent.slice(0, 800)}\`\`\`` || "Brak tekstu" }
                 )
                 .setFooter({ text: 'Kolejne ostrzeżenie może skutkować dłuższą karą.' })
@@ -242,7 +246,7 @@ module.exports = (client) => {
 
             message.author.send({ embeds: [dmEmbed] }).catch(() => {});
 
-            // Log do kanału moderacyjnego
+            // Log
             const logChannel = message.guild.channels.cache.get(logChannelId);
             if (logChannel) {
                 const logEmbed = new EmbedBuilder()
@@ -250,13 +254,12 @@ module.exports = (client) => {
                     .setTitle('👁️ Auto-Mod | Ostrzeżenie')
                     .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
                     .addFields(
-                        { name: '👤 Użytkownik', value: `${message.author.tag} (<@${userId}>)`, inline: true },
-                        { name: '🔢 Ostrzeżeń', value: `**${warnCount}**`, inline: true },
+                        { name: '👤 Użytkownik', value: `${message.author.tag} (<@${userId}>)` },
+                        { name: '🔢 Ostrzeżeń', value: `**${warnCount}**` },
                         { name: '📛 Powód', value: reason },
-                        { name: '📝 Treść wiadomości', value: `\`\`\`${originalContent.slice(0, 700)}\`\`\`` || "[Brak treści]" }
+                        { name: '📝 Treść', value: `\`\`\`${originalContent.slice(0, 700)}\`\`\`` || "[Brak treści]" }
                     )
                     .setTimestamp();
-
                 logChannel.send({ embeds: [logEmbed] });
             }
         } catch (err) {

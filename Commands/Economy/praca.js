@@ -26,49 +26,56 @@ class WorkCanvas {
 
         // ====================== NAGŁÓWEK ======================
         ctx.textAlign = 'center';
-        ctx.font = 'bold 46px Georgia, serif';
-        ctx.fillText('OFICJALNY KWIT WYPŁATY', W / 2, 125);
+        ctx.font = 'bold 48px Georgia, serif';
+        ctx.fillText('OFICJALNY KWIT WYPŁATY', W / 2, 170);
 
-        // ====================== DANE ======================
+        // ====================== DANE (etykiety + wartości) ======================
         ctx.textAlign = 'left';
         ctx.font = 'bold 29px Georgia, serif';
 
-        const leftX = 248;
+        const labelX = 270;
+        const valueX = 425;        // zgodnie z Twoją sugestią
         let y = 235;
 
-        ctx.fillText(`Pracownik: ${username}`, leftX, y);
-        y += 50;
+        // Pracownik
+        ctx.fillText('Pracownik:', labelX, y);
+        ctx.fillText(username, valueX, y);
+        y += 48;
 
-        const truncatedJob = jobText.length > 45 
-            ? jobText.substring(0, 42) + '...' 
+        // Zadanie
+        const truncatedJob = jobText.length > 46 
+            ? jobText.substring(0, 43) + '...' 
             : jobText;
         
-        ctx.fillText(`Zadanie: ${truncatedJob}`, leftX, y);
-        y += 50;
+        ctx.fillText('Zadanie:', labelX, y);
+        ctx.fillText(truncatedJob, valueX, y);
+        y += 48;
 
+        // Data
         const date = new Date().toLocaleDateString('pl-PL', {
             day: '2-digit', month: '2-digit', year: 'numeric'
         });
-        ctx.fillText(`Data: ${date}`, leftX, y);
+        ctx.fillText('Data:', labelX, y);
+        ctx.fillText(date, valueX, y);
 
         // ====================== KWOTA ======================
         ctx.textAlign = 'center';
-        ctx.font = 'bold 62px Georgia, serif';
+        ctx.font = 'bold 58px Georgia, serif';
         
         const amount = `ZAROBEK: ${totalCoins} ZŁ`;
 
         // Cień
         ctx.fillStyle = '#1C1408';
-        ctx.fillText(amount, W/2 + 4, 407);
+        ctx.fillText(amount, W/2 + 4, 415);
 
         // Główny tekst
         ctx.fillStyle = inkColor;
-        ctx.fillText(amount, W/2, 403);
+        ctx.fillText(amount, W/2, 411);
 
-        // Obrys dla lepszej czytelności
+        // Obrys dla lepszej widoczności
         ctx.strokeStyle = '#1C1408';
-        ctx.lineWidth = 4;
-        ctx.strokeText(amount, W/2, 403);
+        ctx.lineWidth = 3.5;
+        ctx.strokeText(amount, W/2, 411);
 
         return new AttachmentBuilder(await canvas.encode('png'), { 
             name: 'kwit_wyplaty.png' 
